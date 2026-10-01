@@ -1,0 +1,5 @@
+node_modules
+.env
+zk/*.ptau
+zk/*.zkey
+zk/*.r1cs
