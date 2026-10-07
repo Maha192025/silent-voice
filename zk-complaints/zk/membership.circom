@@ -10,16 +10,20 @@ template Membership(levels) {
     signal input pathElements[levels];   // private
     signal input pathIndices[levels];    // private (0 = left, 1 = right)
     signal input scope;
-    signal input nonce;                  // public
+    signal input nonce;                  // private
     signal output root;
     signal output nullifier;
 
     component commit = Poseidon(1);
     commit.inputs[0] <== secret;
+    component base = Poseidon(2);
+    base.inputs[0] <== secret;
+    base.inputs[1] <== scope;
+
     component nul = Poseidon(2);
-    nul.inputs[0] <== secret;
-    nul.inputs[1] <== scope;
-    nul.inputs[2] <== nonce;
+    nul.inputs[0] <== base.out;
+    nul.inputs[1] <== nonce;
+
     nullifier <== nul.out;
 
     signal hashes[levels + 1];
