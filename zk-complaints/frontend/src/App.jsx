@@ -107,6 +107,20 @@ function Console() {
     e.preventDefault(); setErr(''); setCred('');
     try { setCred((await api.post('/admin/students', form)).data.credential); setForm({ studentId: '', name: '', email: '', department: '', year: '' }); load(); } catch (x) { setErr(errMsg(x)); }
   };
+  const deactivateStudent = async (studentId) => {
+  if (!window.confirm('Are you sure you want to deactivate this student?')) {
+    return;
+  }
+
+  try {
+    await api.patch(`/admin/students/${studentId}/status`, {
+      status: 'inactive'
+    });
+    load();
+  } catch (e) {
+    setErr(errMsg(e));
+  }
+};
   const S = (s) => rows.filter((r) => r.status === s).length;
   const tabs = [['dash', LayoutDashboard, 'Dashboard'], ['students', Users, 'Student registry'], ['tree', Trees, 'Merkle tree']];
   return (<div className="side"><aside>{tabs.map(([k, I, t]) => <button key={k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}><I size={16} />{t}</button>)}
@@ -129,8 +143,61 @@ function Console() {
         {[['studentId', 'Student ID'], ['name', 'Name'], ['email', 'Email'], ['department', 'Department'], ['year', 'Year']].map(([k, l]) => <div key={k}><label>{l}</label><input required={k !== 'year' && k !== 'department'} value={form[k]} onChange={(e) => setForm({ ...form, [k]: e.target.value })} /></div>)}</div>
         <button className="btn" style={{ marginTop: 16 }}>Register and create credential</button>
         {cred && <div className="note">Give this credential to the student now. It is shown once and is not stored.<div className="mono" style={{ marginTop: 8 }}>{cred}</div></div>}{err && <div className="err">{err}</div>}</form>
-        <div className="card" style={{ marginTop: 18, overflowX: 'auto' }}><table><thead><tr><th>Student ID</th><th>Name</th><th>Dept</th><th>Year</th><th>Status</th></tr></thead><tbody>
-          {students.map((s) => <tr key={s.student_id}><td>{s.student_id}</td><td>{s.name}</td><td>{s.department}</td><td>{s.year}</td><td>{s.status}</td></tr>)}</tbody></table></div></>)}
+        <div className="card" style={{ marginTop: 18, overflowX: 'auto' }}><table>
+  <thead>
+    <tr>
+      <th>Student ID</th>
+      <th>Name</th>
+      <th>Dept</th>
+      <th>Year</th>
+      <th>Status</th>
+      <th>Action</th>
+    </tr>
+  </thead>
+
+  <tbody>
+    {students.map((s) => (
+      <tr key={s.student_id}>
+        <td>{s.student_id}</td>
+        <td>{s.name}</td>
+        <td>{s.department}</td>
+        <td>{s.year}</td>
+        <td>{s.status}</td>
+        <td>
+  {s.status === 'active' && (
+    <button
+      className="btn sm"
+      onClick={() => deactivateStudent(s.student_id)}
+    >
+      Deactivate
+    </button>
+  )}
+
+  <button
+    className="btn sm"
+    style={{ marginLeft: 8 }}
+    onClick={async () => {
+      if (!window.confirm(
+        'Are you sure you want to permanently remove this student? This cannot be undone.'
+      )) {
+        return;
+      }
+
+      try {
+        await api.delete(`/admin/students/${s.student_id}`);
+        load();
+      } catch (e) {
+        setErr(errMsg(e));
+      }
+    }}
+  >
+    Remove
+  </button>
+</td>
+      </tr>
+    ))}
+  </tbody>
+</table></div></>)}
       {tab === 'tree' && <div className="card"><h3>Merkle tree status</h3><p className="sub">Registered students: <b>{tree.count}</b> · Nullifier scope: <b>{tree.scope}</b></p>
         <span className="badge Resolved">Active</span><p><b>Current root</b></p><div className="mono">{tree.root}</div>
         <button className="btn out" style={{ marginTop: 16 }} onClick={load}>Refresh root</button></div>}

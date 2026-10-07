@@ -9,7 +9,8 @@ template Membership(levels) {
     signal input secret;                 // private
     signal input pathElements[levels];   // private
     signal input pathIndices[levels];    // private (0 = left, 1 = right)
-    signal input scope;                  // public
+    signal input scope;
+    signal input nonce;                  // public
     signal output root;
     signal output nullifier;
 
@@ -18,6 +19,7 @@ template Membership(levels) {
     component nul = Poseidon(2);
     nul.inputs[0] <== secret;
     nul.inputs[1] <== scope;
+    nul.inputs[2] <== nonce;
     nullifier <== nul.out;
 
     signal hashes[levels + 1];

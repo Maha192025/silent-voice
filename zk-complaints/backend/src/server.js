@@ -103,7 +103,7 @@ app.patch('/api/admin/complaints/:id/status', requireAdmin, async (req, res) => 
 app.post('/api/admin/students', requireAdmin, async (req, res) => {
   try {
     const { studentId, name, email, department, year } = req.body;
-    if (!clean(studentId) || !clean(name) || !clean(email)) return res.status(400).json({ message: 'Student ID, name and email are required.' });
+    if (!clean(studentId) || !clean(name) || !clean(email) || !year) return res.status(400).json({ message: 'Student ID, name, email and year are required.' });
     const secret = newSecret();
     const commitment = (await commitmentOf(secret)).toString();
     await pool.query('INSERT INTO students (student_id,name,email,department,year,commitment) VALUES (?,?,?,?,?,?)',
@@ -114,6 +114,45 @@ app.post('/api/admin/students', requireAdmin, async (req, res) => {
 });
 app.get('/api/admin/students', requireAdmin, async (_req, res) => {
   try { const [r] = await pool.query('SELECT student_id,name,department,year,status,created_at FROM students ORDER BY id'); res.json(r); } catch (e) { fail(res, e); }
+});
+
+app.patch('/api/admin/students/:studentId/status', requireAdmin, async (req, res) => {
+  try {
+    const { status } = req.body;
+
+    if (!['active', 'inactive'].includes(status)) {
+      return res.status(400).json({ message: 'Invalid student status' });
+    }
+
+    const [result] = await pool.query(
+      'UPDATE students SET status=? WHERE student_id=?',
+      [status, req.params.studentId]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Student not found' });
+    }
+
+    res.json({ ok: true, status });
+  } catch (e) {
+    fail(res, e);
+  }
+});
+app.delete('/api/admin/students/:studentId', requireAdmin, async (req, res) => {
+  try {
+    const [result] = await pool.query(
+      'DELETE FROM students WHERE student_id=?',
+      [req.params.studentId]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Student not found' });
+    }
+
+    res.json({ ok: true, message: 'Student removed successfully' });
+  } catch (e) {
+    fail(res, e);
+  }
 });
 app.get('/api/admin/merkle-root', requireAdmin, async (_req, res) => {
   try { res.json({ root: await getRoot(), count: (await getLeaves()).length, scope: process.env.SCOPE }); } catch (e) { fail(res, e); }

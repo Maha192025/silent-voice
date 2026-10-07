@@ -1,9 +1,13 @@
-import * as snarkjs from 'snarkjs';
-import { buildPoseidon } from 'circomlibjs';
+import { Buffer } from 'buffer';
+
+globalThis.Buffer = Buffer;
 const DEPTH = 10;
 
 // Runs ENTIRELY in the browser. The secret never leaves this function.
 export async function generateEligibilityProof(secretText, { leaves, scope }) {
+  const { buildPoseidon } = await import('circomlibjs');
+  const snarkjs = await import('snarkjs');
+
   const poseidon = await buildPoseidon();
   const F = poseidon.F;
   const h = (...x) => F.toObject(poseidon(x));
@@ -22,7 +26,25 @@ export async function generateEligibilityProof(secretText, { leaves, scope }) {
     for (let i = 0; i < level.length; i += 2) next.push(h(level[i], level[i + 1] ?? zero));
     level = next; zero = h(zero, zero); index >>= 1;
   }
-  return snarkjs.groth16.fullProve(
-    { secret: secret.toString(), scope: String(scope), pathElements, pathIndices },
-    '/zk/membership.wasm', '/zk/membership_final.zkey');
+  const randomBytes = new Uint8Array(31);
+crypto.getRandomValues(randomBytes);
+
+const nonce = BigInt(
+  '0x' +
+  Array.from(randomBytes)
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('')
+);
+
+return snarkjs.groth16.fullProve(
+  {
+    secret: secret.toString(),
+    scope: String(scope),
+    nonce: nonce.toString(),
+    pathElements,
+    pathIndices
+  },
+  '/zk/membership.wasm',
+  '/zk/membership_final.zkey'
+);
 }
